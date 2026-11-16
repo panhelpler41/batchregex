@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batch Regex Replacer + Templates</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-color: #2c3e50;
+            --border-color: #dce1e7;
+            --primary-color: #3498db;
+            --primary-hover: #2980b9;
+            --secondary-color: #95a5a6;
+            --secondary-hover: #7f8c8d;
+            --danger-color: #e74c3c;
+            --danger-hover: #c0392b;
+            --success-color: #2ecc71;
+            --error-bg: #fee;
+            --error-text: #c0392b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 280px 1fr 1fr;
+            gap: 20px;
+        }
+
+        .io-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        textarea, input[type="text"], select {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 8px 10px;
+            font-family: "Fira Code", "Consolas", monospace;
+            font-size: 14px;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        textarea:focus, input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        #templateList {
+            height: 280px;
+            padding: 4px;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        #templateList option {
+            padding: 8px 10px;
+            border-radius: 4px;
+            margin-bottom: 2px;
+        }
+
+        #templateList option:checked {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 500;
+        }
+
+        #regexList {
+            height: 280px;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        #inputText, #outputText {
+            height: 230px;
+        }
+
+        #outputText {
+            background-color: #fafbfc;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .template-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button.secondary {
+            background-color: var(--secondary-color);
+        }
+
+        button.secondary:hover {
+            background-color: var(--secondary-hover);
+        }
+
+        button.danger {
+            background-color: var(--danger-color);
+        }
+
+        button.danger:hover {
+            background-color: var(--danger-hover);
+        }
+
+        .save-group {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .help-text {
+            font-size: 0.82rem;
+            color: #555;
+            margin-top: 12px;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 3px solid var(--primary-color);
+        }
+
+        #errorBox {
+            display: none;
+            background-color: var(--error-bg);
+            color: var(--error-text);
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 0.85rem;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* Modal pro export/import */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 700px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+        }
+
+        #exportArea {
+            height: 300px;
+            margin: 10px 0;
+            font-size: 13px;
+        }
+
+        @media (max-width: 1024px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Batch Regex Replacer</h1>
+        <div class="controls" style="margin:0;">
+            <button onclick="openExportModal()">📋 Exportovat / Kopírovat všechny šablony</button>
+            <button class="secondary" onclick="resetDefaultTemplates()">Obnovit výchozí šablony</button>
+        </div>
+    </header>
+
+    <div class="grid">
+        <!-- 1. sloupec: Listbox se šablonami -->
+        <div class="card">
+            <div class="card-header">
+                <span>1. Šablony (Templates)</span>
+            </div>
+            
+            <select id="templateList" size="10" onchange="selectTemplate()"></select>
+
+            <div class="template-actions">
+                <button class="secondary" onclick="renameSelectedTemplate()">✏️ Přejmenovat</button>
+                <button class="danger" onclick="deleteSelectedTemplate()">🗑️ Smazat</button>
+            </div>
+
+            <div class="save-group">
+                <input type="text" id="newTemplateName" placeholder="Název šablony..." style="font-family: inherit;">
+                <button onclick="saveCurrentAsTemplate()">Uložit</button>
+            </div>
+            <small style="color: #777; margin-top: 6px; font-size: 0.78rem;">
+                Kliknutím načtete pravidla. Zadáte-li existující název, šablona se přepíše.
+            </small>
+        </div>
+
+        <!-- 2. sloupec: Editor pravidel -->
+        <div class="card">
+            <div class="card-header">
+                <span>2. Pravidla (Regex -> Nahrazení)</span>
+                <label style="font-weight: normal; font-size: 0.85rem; cursor: pointer;">
+                    <input type="checkbox" id="liveUpdate" checked onchange="processText()"> Živý náhled
+                </label>
+            </div>
+            
+            <textarea id="regexList" placeholder="Vyberte šablonu vlevo nebo napište vlastní pravidla..." oninput="handleInput()"></textarea>
+            
+            <div class="controls">
+                <button onclick="processText()">Spustit nahrazení</button>
+                <button class="secondary" onclick="clearRules()">Vymazat pole</button>
+            </div>
+
+            <div id="errorBox"></div>
+
+            <div class="help-text">
+                <strong>Formát pravidel (1 řádek = 1 pravidlo):</strong><br>
+                • Oddělovač je <code>-></code> (vše za ním se bere doslova včetně mezer)<br>
+                • S příznaky: <code>/text/gi -> novy_text</code><br>
+                • Bez lomítek (globálně): <code>slovo -> jine_slovo</code><br>
+                • Mezera v náhradě: <code>a-> </code> nebo <code>/a/g -> \x20</code><br>
+                • Speciální znaky: <code>\n</code> (nový řádek), <code>\t</code> (tabulátor), <code>$1</code> (skupina)
+            </div>
+        </div>
+
+        <!-- 3. sloupec: Vstup a Výstup -->
+        <div class="io-column">
+            <div class="card">
+                <div class="card-header">
+                    <span>3. Vstupní text (Input)</span>
+                    <button class="secondary" style="padding: 4px 8px; font-size: 12px;" onclick="document.getElementById('inputText').value=''; processText();">Smazat</button>
+                </div>
+                <textarea id="inputText" placeholder="Vložte text ke zpracování..." oninput="handleInput()"></textarea>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span>4. Výsledný text (Output)</span>
+                    <button style="padding: 4px 8px; font-size: 12px;" onclick="copyText('outputText', this)">Kopírovat výsledek</button>
+                </div>
+                <textarea id="outputText" readonly placeholder="Zde se objeví výsledek..."></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modální okno pro kopírování / import všech šablon -->
+<div class="modal-backdrop" id="exportModal">
+    <div class="modal">
+        <h2>Všechny šablony (Název + Regex pravidla)</h2>
+        <p style="font-size: 0.85rem; color: #555; margin-top: 0;">
+            Zde můžete zkopírovat kompletní seznam všech šablon i s jejich názvy, nebo vložit upravený seznam a kliknout na <strong>Importovat</strong>.
+        </p>
+        <textarea id="exportArea"></textarea>
+        <div class="controls" style="justify-content: flex-end;">
+            <button onclick="copyText('exportArea', this)">Kopírovat do schránky</button>
+            <button style="background-color: var(--success-color);" onclick="importTemplatesFromModal()">Uložit / Importovat změny</button>
+            <button class="secondary" onclick="closeExportModal()">Zavřít</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = 'batch_regex_templates_v1';
+
+    const defaultTemplates = [
+        /*{
+            name: "Ukázka: Čištění a formátování textu",
+            rules: "/ {2,}/g -> \x20\n/(\\d{2})\\.(\\d{2})\\.(\\d{4})/g -> $3-$2-$1\n/[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}/gi -> [SKRYTÝ E-MAIL]\n/^- /gm -> • ",
+            sampleInput: "Dobrý den,\nobjednávka ze dne 15.04.2026   byla přijata.\nKontakt: Jan.Novak@example.cz\n\nPoložky:\n- Klávesnice\n- Myš   bezdrátová"
+        },
+        {
+            name: "Odstranění prázdných řádků a mezer",
+            rules: "/^[ \\t]+|[ \\t]+$/gm -> \n/\\n{2,}/g -> \\n",
+            sampleInput: "   První řádek s mezerami   \n\n\n   Druhý řádek   \n\nTřetí řádek"
+        },
+        {
+            name: "Převod čárek na středníky (CSV)",
+            rules: ",->;",
+            sampleInput: "Jméno,Příjmení,Věk\nJan,Novák,30\nPetr,Svoboda,25"
+        },
+        {
+            name: "Odstranění HTML tagů",
+            rules: "/<[^>]*>/g -> \n/ {2,}/g -> \x20",
+            sampleInput: "<div class=\"box\">\n  <h1>Nadpis</h1>\n  <p>Toto je <b>tučný</b> text.</p>\n</div>"
+        },
+        {
+            name: "Extrakce pouze číslic z řádků",
+            rules: "/[^0-9\\n]/g -> ",
+            sampleInput: "Faktura č. 2026-001: 1 500 Kč\nObjednávka #8842 (stav: vyřízeno)"
+        }*/
+    ];
+
+    let templates = [];
+
+    const templateListEl = document.getElementById('templateList');
+    const regexListEl = document.getElementById('regexList');
+    const inputTextEl = document.getElementById('inputText');
+    const outputTextEl = document.getElementById('outputText');
+    const errorBoxEl = document.getElementById('errorBox');
+    const liveUpdateEl = document.getElementById('liveUpdate');
+    const newTemplateNameEl = document.getElementById('newTemplateName');
+
+    function init() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            try {
+                templates = JSON.parse(saved);
+            } catch (e) {
+                templates = [...defaultTemplates];
+            }
+        } else {
+            templates = [...defaultTemplates];
+            saveTemplatesToStorage();
+        }
+
+        renderTemplateList();
+        if (templates.length > 0) {
+            templateListEl.selectedIndex = 0;
+            selectTemplate();
+        }
+    }
+
+    function saveTemplatesToStorage() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
+    }
+
+    function renderTemplateList() {
+        templateListEl.innerHTML = '';
+        templates.forEach((tpl, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = tpl.name;
+            templateListEl.appendChild(option);
+        });
+    }
+
+    function selectTemplate() {
+        const idx = templateListEl.value;
+        if (idx === '' || !templates[idx]) return;
+
+        const selected = templates[idx];
+        regexListEl.value = selected.rules;
+        newTemplateNameEl.value = selected.name;
+
+        if (selected.sampleInput && inputTextEl.value.trim() === '') {
+            inputTextEl.value = selected.sampleInput;
+        }
+
+        processText();
+    }
+
+    function saveCurrentAsTemplate() {
+        const name = newTemplateNameEl.value.trim();
+        const rules = regexListEl.value;
+
+        if (!name) {
+            alert('Zadejte prosím název šablony.');
+            newTemplateNameEl.focus();
+            return;
+        }
+
+        const existingIndex = templates.findIndex(t => t.name.toLowerCase() === name.toLowerCase());
+
+        if (existingIndex !== -1) {
+            templates[existingIndex].name = name;
+            templates[existingIndex].rules = rules;
+            saveTemplatesToStorage();
+            renderTemplateList();
+            templateListEl.selectedIndex = existingIndex;
+        } else {
+            templates.push({ name, rules });
+            saveTemplatesToStorage();
+            renderTemplateList();
+            templateListEl.selectedIndex = templates.length - 1;
+        }
+    }
+
+    function renameSelectedTemplate() {
+        const idx = parseInt(templateListEl.value, 10);
+        if (isNaN(idx) || !templates[idx]) {
+            alert('Nejprve vyberte šablonu v seznamu.');
+            return;
+        }
+
+        const currentName = templates[idx].name;
+        const newName = prompt('Zadejte nový název šablony:', currentName);
+
+        if (newName === null) return; // Uživatel klikl na Zrušit
+        
+        const trimmedName = newName.trim();
+        if (!trimmedName) {
+            alert('Název šablony nemůže být prázdný.');
+            return;
+        }
+
+        // Kontrola, zda již neexistuje jiná šablona se stejným názvem
+        const duplicateIdx = templates.findIndex((t, i) => i !== idx && t.name.toLowerCase() === trimmedName.toLowerCase());
+        if (duplicateIdx !== -1) {
+            alert('Šablona s tímto názvem již existuje. Zvolte prosím jiný název.');
+            return;
+        }
+
+        templates[idx].name = trimmedName;
+        saveTemplatesToStorage();
+        renderTemplateList();
+        templateListEl.selectedIndex = idx;
+        newTemplateNameEl.value = trimmedName;
+    }
+
+    function deleteSelectedTemplate() {
+        const idx = templateListEl.value;
+        if (idx === '' || !templates[idx]) {
+            alert('Nejprve vyberte šablonu v seznamu.');
+            return;
+        }
+
+        if (confirm(`Opravdu smazat šablonu "${templates[idx].name}"?`)) {
+            templates.splice(idx, 1);
+            saveTemplatesToStorage();
+            renderTemplateList();
+            if (templates.length > 0) {
+                templateListEl.selectedIndex = 0;
+                selectTemplate();
+            } else {
+                regexListEl.value = '';
+                newTemplateNameEl.value = '';
+                processText();
+            }
+        }
+    }
+
+    function resetDefaultTemplates() {
+        if (confirm('Obnovit výchozí šablony? Vaše vlastní přidané šablony budou přepsány.')) {
+            templates = [...defaultTemplates];
+            saveTemplatesToStorage();
+            renderTemplateList();
+            templateListEl.selectedIndex = 0;
+            selectTemplate();
+        }
+    }
+
+    function openExportModal() {
+        const exportData = templates.map(t => ({
+            name: t.name,
+            rules: t.rules
+        }));
+        document.getElementById('exportArea').value = JSON.stringify(exportData, null, 2);
+        document.getElementById('exportModal').style.display = 'flex';
+    }
+
+    function closeExportModal() {
+        document.getElementById('exportModal').style.display = 'none';
+    }
+
+    function importTemplatesFromModal() {
+        try {
+            const raw = document.getElementById('exportArea').value;
+            const parsed = JSON.parse(raw);
+
+            if (!Array.isArray(parsed)) {
+                throw new Error('Data musí být pole šablon.');
+            }
+
+            const validTemplates = parsed.map((item, i) => {
+                if (typeof item.name !== 'string' || typeof item.rules !== 'string') {
+                    throw new Error(`Položka na pozici ${i + 1} nemá platný formát (chybí "name" nebo "rules").`);
+                }
+                return { name: item.name, rules: item.rules };
+            });
+
+            templates = validTemplates;
+            saveTemplatesToStorage();
+            renderTemplateList();
+            if (templates.length > 0) {
+                templateListEl.selectedIndex = 0;
+                selectTemplate();
+            }
+            closeExportModal();
+        } catch (e) {
+            alert('Chyba při importu: ' + e.message);
+        }
+    }
+
+    function handleInput() {
+        if (liveUpdateEl.checked) {
+            processText();
+        }
+    }
+
+    function parseLineToRule(line, lineNumber) {
+        const separatorIndex = line.indexOf('->');
+        if (separatorIndex === -1) {
+            throw new Error(`Řádek ${lineNumber}: Chybí oddělovač "->"`);
+        }
+
+        let patternPart = line.slice(0, separatorIndex);
+        if (/^\/.+\/[gimsuy]*\s+$/.test(patternPart)) {
+            patternPart = patternPart.trim();
+        }
+
+        let replacementPart = line.slice(separatorIndex + 2);
+
+        replacementPart = replacementPart
+            .replace(/\\n/g, '\n')
+            .replace(/\\t/g, '\t')
+            .replace(/\\r/g, '\r')
+            .replace(/\\x20/g, ' ');
+
+        let regex;
+        const regexLiteralMatch = patternPart.match(/^\/(.+)\/([gimsuy]*)$/);
+
+        try {
+            if (regexLiteralMatch) {
+                regex = new RegExp(regexLiteralMatch[1], regexLiteralMatch[2]);
+            } else {
+                regex = new RegExp(patternPart, 'g');
+            }
+        } catch (e) {
+            throw new Error(`Řádek ${lineNumber}: Neplatný Regex (${e.message})`);
+        }
+
+        return { regex, replacement: replacementPart };
+    }
+
+    function processText() {
+        const rawRules = regexListEl.value.split('\n');
+        let currentText = inputTextEl.value;
+        
+        errorBoxEl.style.display = 'none';
+        errorBoxEl.innerHTML = '';
+        let errors = [];
+
+        rawRules.forEach((line, index) => {
+            if (line.trim() === '') return;
+
+            try {
+                const rule = parseLineToRule(line, index + 1);
+                currentText = currentText.replace(rule.regex, rule.replacement);
+            } catch (err) {
+                errors.push(err.message);
+            }
+        });
+
+        if (errors.length > 0) {
+            errorBoxEl.innerHTML = errors.join('<br>');
+            errorBoxEl.style.display = 'block';
+        }
+
+        outputTextEl.value = currentText;
+    }
+
+    function clearRules() {
+        regexListEl.value = '';
+        templateListEl.selectedIndex = -1;
+        processText();
+    }
+
+    function copyText(elementId, btnElement) {
+        const el = document.getElementById(elementId);
+        el.select();
+        document.execCommand('copy');
+        
+        const originalText = btnElement.innerText;
+        btnElement.innerText = 'Zkopírováno!';
+        setTimeout(() => {
+            btnElement.innerText = originalText;
+        }, 1500);
+    }
+
+    init();
+</script>
+
+</body>
+</html>
