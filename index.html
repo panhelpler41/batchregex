@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>Duhový odkaz</title>
+  <style>
+    .duhovy-odkaz {
+      font-size: 24px;
+      font-weight: bold;
+      text-decoration: none;
+      /* Vytvoření duhového přechodu */
+      background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
+      /* Oříznutí pozadí přesně podle tvaru textu */
+      -webkit-background-clip: text;
+      background-clip: text;
+      /* Průhledná barva písma, aby prosvítalo pozadí */
+      color: transparent;
+      display: inline-block;
+    }
+
+    /* Volitelný efekt při najetí myší */
+    .duhovy-odkaz:hover {
+      opacity: 0.8;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <a href="/bregex3b.html" class="duhovy-odkaz">Odkaz na bregex3b</a>
+
+</body>
+</html>
